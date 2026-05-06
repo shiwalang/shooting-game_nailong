@@ -345,7 +345,6 @@
     const hpBar = document.getElementById('hpBar');
     const bossHud = document.getElementById('bossHud');
     const bossBar = document.getElementById('bossBar');
-    const tip = document.getElementById('tip');
 
     const startScreen = document.getElementById('startScreen');
     const startBtn = document.getElementById('startBtn');
@@ -382,12 +381,76 @@
     const stickCenter = { x: 75, y: 75 };
     const stickRadius = 48;
 
+    const images = {};
+    const sounds = {};
+    let audioUnlocked = false;
+    let lastShootSoundTime = 0;
+    let lastBossLaughTime = 0;
+
     function rand(min, max) {
       return Math.random() * (max - min) + min;
     }
 
     function clamp(v, min, max) {
       return Math.max(min, Math.min(max, v));
+    }
+
+    function loadImage(name, src) {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve({ name, img });
+        img.onerror = () => resolve({ name, img: null });
+        img.src = src;
+      });
+    }
+
+    async function preloadAssets() {
+      const imageList = [
+        ['player', 'images/飞机.jpeg'],
+        ['enemy1', 'images/奶茶.png'],
+        ['enemy2', 'images/巴巴博_.png'],
+        ['enemy3', 'images/比比拉布.png'],
+        ['enemy4', 'images/咕咕嘎嘎.png'],
+        ['enemy5', 'images/歪比巴布.png'],
+        ['boss', 'images/我的刀庠.png']
+      ];
+
+      const loaded = await Promise.all(imageList.map(([name, src]) => loadImage(name, src)));
+      loaded.forEach(item => {
+        images[item.name] = item.img;
+      });
+
+      sounds.shoot = new Audio('audios/鸡叫.wav');
+      sounds.bossAttack = new Audio('audios/奶龙大笑_剪辑.wav');
+
+      sounds.shoot.preload = 'auto';
+      sounds.bossAttack.preload = 'auto';
+
+      sounds.shoot.volume = 0.55;
+      sounds.bossAttack.volume = 0.7;
+    }
+
+    function playSound(name) {
+      if (!audioUnlocked || !sounds[name]) return;
+      try {
+        const a = sounds[name].cloneNode();
+        a.volume = sounds[name].volume ?? 1;
+        a.play().catch(() => {});
+      } catch (e) {}
+    }
+
+    function playShootSound() {
+      const now = performance.now();
+      if (now - lastShootSoundTime < 800) return;
+      lastShootSoundTime = now;
+      playSound('shoot');
+    }
+
+    function playBossAttackSound() {
+      const now = performance.now();
+      if (now - lastBossLaughTime < 5000) return;
+      lastBossLaughTime = now;
+      playSound('bossAttack');
     }
 
     function resizeCanvas() {
@@ -428,19 +491,19 @@
       }
 
       reset() {
-        this.w = 30;
-        this.h = 42;
+        this.w = 52;
+        this.h = 62;
         this.x = canvas.width / 2 - this.w / 2;
-        this.y = canvas.height - 140;
-        this.baseSpeed = 4.2;
-        this.boostSpeed = 7.5;
-        this.hpMax = 100;
+        this.y = canvas.height - 160;
+        this.baseSpeed = 4.6;
+        this.boostSpeed = 7.8;
+        this.hpMax = 120;
         this.hp = this.hpMax;
         this.attack = 1;
         this.level = 1;
         this.exp = 0;
         this.expToNext = 8;
-        this.fireRate = 10;
+        this.fireRate = 12;
         this.bulletCooldown = 0;
         this.multiShot = 1;
         this.pierce = 0;
@@ -456,9 +519,14 @@
       }
 
       draw() {
+        const img = images.player;
+        if (img) {
+          ctx.drawImage(img, this.x, this.y, this.w, this.h);
+          return;
+        }
+
         ctx.save();
         ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
-
         ctx.fillStyle = '#38bdf8';
         ctx.beginPath();
         ctx.moveTo(0, -this.h / 2);
@@ -467,20 +535,6 @@
         ctx.lineTo(-this.w / 2, this.h / 2);
         ctx.closePath();
         ctx.fill();
-
-        ctx.fillStyle = '#e0f2fe';
-        ctx.beginPath();
-        ctx.moveTo(0, -10);
-        ctx.lineTo(6, 8);
-        ctx.lineTo(0, 2);
-        ctx.lineTo(-6, 8);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(-5, this.h / 2 - 2, 4, 10 + Math.random() * 6);
-        ctx.fillRect(1, this.h / 2 - 2, 4, 10 + Math.random() * 6);
-
         ctx.restore();
       }
     }
@@ -521,15 +575,21 @@
     class Enemy {
       constructor(type = 'normal') {
         this.type = type;
-        this.r = type === 'fast' ? 14 : 18;
+        this.r = type === 'fast' ? 18 : 20;
         this.x = rand(this.r, canvas.width - this.r);
         this.y = -30;
-        this.speed = type === 'fast' ? rand(2.4, 3.6) : rand(1.4, 2.4);
-        this.hpMax = type === 'fast' ? 2 + wave * 0.3 : 4 + wave * 0.5;
+        this.speed = type === 'fast' ? rand(1.8, 2.6) : rand(1.1, 1.9);
+        this.hpMax = type === 'fast' ? 2 + wave * 0.2 : 3 + wave * 0.35;
         this.hp = this.hpMax;
         this.dead = false;
-        this.touchDamage = 12;
+        this.touchDamage = 8;
         this.score = type === 'fast' ? 2 : 1;
+        this.spriteKey = this.pickSprite();
+      }
+
+      pickSprite() {
+        const pool = ['enemy1', 'enemy2', 'enemy3', 'enemy4', 'enemy5'];
+        return pool[Math.floor(Math.random() * pool.length)];
       }
 
       update() {
@@ -543,17 +603,17 @@
       }
 
       draw() {
+        const img = images[this.spriteKey];
+        if (img) {
+          ctx.drawImage(img, this.x - this.r, this.y - this.r, this.r * 2, this.r * 2);
+          return;
+        }
+
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.fillStyle = this.type === 'fast' ? '#fb7185' : '#a78bfa';
         ctx.beginPath();
         ctx.arc(0, 0, this.r, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.fillStyle = 'rgba(255,255,255,0.9)';
-        ctx.beginPath();
-        ctx.arc(-5, -3, 2, 0, Math.PI * 2);
-        ctx.arc(5, -3, 2, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       }
@@ -562,17 +622,17 @@
     class Boss {
       constructor() {
         this.x = canvas.width / 2;
-        this.y = 100;
-        this.r = 42;
-        this.hpMax = 180 + wave * 25;
+        this.y = 110;
+        this.r = 52;
+        this.hpMax = 140 + wave * 18;
         this.hp = this.hpMax;
         this.dead = false;
         this.dir = 1;
-        this.cooldown = 70;
+        this.cooldown = 95;
       }
 
       update() {
-        this.x += this.dir * 2.2;
+        this.x += this.dir * 1.8;
         if (this.x < this.r + 8 || this.x > canvas.width - this.r - 8) {
           this.dir *= -1;
         }
@@ -580,7 +640,7 @@
         this.cooldown--;
         if (this.cooldown <= 0) {
           this.shoot();
-          this.cooldown = 45;
+          this.cooldown = 78;
         }
       }
 
@@ -589,42 +649,35 @@
         const py = player.y + player.h / 2;
         const dx = px - this.x;
         const dy = py - this.y;
-        const len = Math.hypot(dx, dy) || 1;
 
         for (let i = -1; i <= 1; i++) {
-          const angle = Math.atan2(dy, dx) + i * 0.2;
+          const angle = Math.atan2(dy, dx) + i * 0.18;
           enemyBullets.push({
             x: this.x,
             y: this.y,
-            vx: Math.cos(angle) * 3.2,
-            vy: Math.sin(angle) * 3.2,
+            vx: Math.cos(angle) * 2.6,
+            vy: Math.sin(angle) * 2.6,
             r: 5,
             dead: false
           });
         }
+
+        playBossAttackSound();
       }
 
       draw() {
+        const img = images.boss;
+        if (img) {
+          ctx.drawImage(img, this.x - this.r, this.y - this.r, this.r * 2, this.r * 2);
+          return;
+        }
+
         ctx.save();
         ctx.translate(this.x, this.y);
-
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
         ctx.arc(0, 0, this.r, 0, Math.PI * 2);
         ctx.fill();
-
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.arc(-12, -8, 4, 0, Math.PI * 2);
-        ctx.arc(12, -8, 4, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.strokeStyle = '#7f1d1d';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(0, 10, 18, 0.15 * Math.PI, 0.85 * Math.PI);
-        ctx.stroke();
-
         ctx.restore();
       }
     }
@@ -636,19 +689,21 @@
       const top = player.y + 2;
       const spread = player.multiShot;
 
+      playShootSound();
+
       if (spread === 1) {
-        bullets.push(new Bullet(cx, top, 0, -8.5, player.attack, player.pierce));
+        bullets.push(new Bullet(cx, top, 0, -8.2, player.attack, player.pierce));
       } else {
         const total = spread;
         for (let i = 0; i < total; i++) {
           const offset = (i - (total - 1) / 2) * 0.18;
-          bullets.push(new Bullet(cx, top, Math.sin(offset) * 3, -8.2, player.attack, player.pierce));
+          bullets.push(new Bullet(cx, top, Math.sin(offset) * 3, -8.0, player.attack, player.pierce));
         }
       }
     }
 
     function spawnEnemy() {
-      const type = Math.random() < 0.25 ? 'fast' : 'normal';
+      const type = Math.random() < 0.22 ? 'fast' : 'normal';
       enemies.push(new Enemy(type));
     }
 
@@ -698,14 +753,14 @@
       {
         key: 'firerate',
         name: '射速提升',
-        desc: '开火间隔 -1（最低 4）',
-        apply() { player.fireRate = Math.max(4, player.fireRate - 1); }
+        desc: '开火间隔 -1（最低 5）',
+        apply() { player.fireRate = Math.max(5, player.fireRate - 1); }
       },
       {
         key: 'heal',
         name: '装甲修复',
-        desc: '回复 25 生命值',
-        apply() { player.hp = Math.min(player.hpMax, player.hp + 25); }
+        desc: '回复 30 生命值',
+        apply() { player.hp = Math.min(player.hpMax, player.hp + 30); }
       },
       {
         key: 'multishot',
@@ -765,6 +820,8 @@
       enemyBullets = [];
       particles = [];
       boss = null;
+      lastShootSoundTime = 0;
+      lastBossLaughTime = 0;
       player.reset();
       gamePaused = false;
       gameOverScreen.classList.add('hide');
@@ -874,19 +931,19 @@
 
     function updateSpawns() {
       enemySpawnTimer--;
-      const spawnGap = Math.max(18, 50 - wave * 2);
+      const spawnGap = Math.max(28, 62 - wave * 2);
 
       if (enemySpawnTimer <= 0) {
         spawnEnemy();
-        if (wave >= 3 && Math.random() < 0.35) spawnEnemy();
+        if (wave >= 4 && Math.random() < 0.22) spawnEnemy();
         enemySpawnTimer = spawnGap;
       }
 
-      if (frame % 900 === 0) {
+      if (frame % 1000 === 0) {
         wave++;
       }
 
-      if (frame === 1200 && !boss) {
+      if (frame === 1500 && !boss) {
         spawnBoss();
       }
     }
@@ -946,9 +1003,9 @@
         if (e.dead) continue;
         const px = player.x + player.w / 2;
         const py = player.y + player.h / 2;
-        const pr = Math.max(player.w, player.h) * 0.35;
+        const pr = Math.max(player.w, player.h) * 0.28;
 
-        if (circleHit(px, py, pr, e.x, e.y, e.r)) {
+        if (circleHit(px, py, pr, e.x, e.y, e.r * 0.82)) {
           e.dead = true;
           player.hp -= e.touchDamage;
           addParticles(e.x, e.y, '#fca5a5', 14);
@@ -969,10 +1026,10 @@
 
       const px = player.x + player.w / 2;
       const py = player.y + player.h / 2;
-      const pr = Math.max(player.w, player.h) * 0.35;
+      const pr = Math.max(player.w, player.h) * 0.26;
 
-      if (circleHit(px, py, pr, boss.x, boss.y, boss.r)) {
-        player.hp -= 0.4;
+      if (circleHit(px, py, pr, boss.x, boss.y, boss.r * 0.78)) {
+        player.hp -= 0.22;
         if (player.hp <= 0) {
           player.hp = 0;
           gameOver(false);
@@ -987,11 +1044,11 @@
 
         const px = player.x + player.w / 2;
         const py = player.y + player.h / 2;
-        const pr = Math.max(player.w, player.h) * 0.35;
+        const pr = Math.max(player.w, player.h) * 0.28;
 
         if (circleHit(px, py, pr, b.x, b.y, b.r)) {
           b.dead = true;
-          player.hp -= 10;
+          player.hp -= 8;
           addParticles(b.x, b.y, '#fdba74', 8);
           if (player.hp <= 0) {
             player.hp = 0;
@@ -1108,16 +1165,31 @@
     async function unlockAudio() {
       try {
         const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        const audioCtx = new AC();
-        const buffer = audioCtx.createBuffer(1, 1, 22050);
-        const source = audioCtx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioCtx.destination);
-        source.start(0);
-        if (audioCtx.state === 'suspended') {
-          await audioCtx.resume();
+        if (AC) {
+          const audioCtx = new AC();
+          const buffer = audioCtx.createBuffer(1, 1, 22050);
+          const source = audioCtx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(audioCtx.destination);
+          source.start(0);
+          if (audioCtx.state === 'suspended') {
+            await audioCtx.resume();
+          }
         }
+
+        for (const key of Object.keys(sounds)) {
+          try {
+            sounds[key].muted = true;
+            await sounds[key].play();
+            sounds[key].pause();
+            sounds[key].currentTime = 0;
+            sounds[key].muted = false;
+          } catch (e) {
+            sounds[key].muted = false;
+          }
+        }
+
+        audioUnlocked = true;
       } catch (e) {}
     }
 
@@ -1146,6 +1218,8 @@
         gamePaused = false;
       }
     });
+
+    preloadAssets();
   </script>
 </body>
 </html>
