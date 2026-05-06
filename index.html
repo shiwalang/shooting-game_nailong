@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-  <title>飞机游戏-手动射击版</title>
+  <title>飞机游戏-左右血条版</title>
   <style>
     * {
       box-sizing: border-box;
@@ -81,43 +81,47 @@
       flex-wrap: wrap;
     }
 
+    /* 关键：左右两侧固定血条 */
     .side-bar {
       position: fixed;
-      top: 90px;
-      width: 44px;
-      height: 260px;
-      z-index: 12;
+      top: 120px;
+      width: 52px;
+      height: 300px;
+      z-index: 15;
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      justify-content: flex-start;
+      gap: 10px;
       pointer-events: none;
     }
 
     .left-bar {
-      left: 8px;
+      left: max(8px, env(safe-area-inset-left, 0px));
     }
 
     .right-bar {
-      right: 8px;
+      right: max(8px, env(safe-area-inset-right, 0px));
     }
 
     .bar-title {
       font-size: 12px;
-      color: rgba(255,255,255,0.9);
+      color: rgba(255,255,255,0.92);
       text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      letter-spacing: 1px;
       writing-mode: vertical-rl;
       text-orientation: mixed;
     }
 
     .vertical-bar-wrap {
       position: relative;
-      width: 18px;
-      height: 220px;
+      width: 20px;
+      height: 240px;
       border-radius: 999px;
       background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
       overflow: hidden;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.25);
     }
 
     .vertical-bar {
@@ -125,7 +129,7 @@
       left: 0;
       bottom: 0;
       width: 100%;
-      height: 50%;
+      height: 100%;
       border-radius: 999px;
       transition: height 0.12s linear;
     }
@@ -327,13 +331,15 @@
     </div>
   </div>
 
-  <div class="side-bar left-bar">
+  <!-- 左侧玩家血条 -->
+  <div class="side-bar left-bar" id="playerBarWrap">
     <div class="bar-title">玩家</div>
     <div class="vertical-bar-wrap">
       <div class="vertical-bar player-bar" id="playerHpBar"></div>
     </div>
   </div>
 
+  <!-- 右侧 Boss 血条 -->
   <div class="side-bar right-bar hide" id="bossBarWrap">
     <div class="bar-title">Boss</div>
     <div class="vertical-bar-wrap">
@@ -342,7 +348,7 @@
   </div>
 
   <div class="tip">
-    左下摇杆移动｜右上射击｜右下加速
+    左下摇杆移动｜右侧射击｜右侧加速
   </div>
 
   <div class="mobile-controls">
@@ -360,8 +366,8 @@
   <div class="overlay" id="startScreen">
     <div class="panel">
       <h1>手机版飞机游戏</h1>
-      <p>操作：左下摇杆移动，右上按钮射击，右下按钮加速。</p>
-      <p>本版已改为手动射击，Boss 固定使用奶茶贴图。</p>
+      <p>左下摇杆移动，右侧按钮射击与加速。</p>
+      <p>血条已固定到左右两侧显示。</p>
       <button class="start-btn" id="startBtn">开始游戏</button>
     </div>
   </div>
@@ -460,7 +466,7 @@
       const imageList = [
         ['player', 'images/飞机.jpeg'],
         ['enemy1', 'images/奶茶.png'],
-        ['enemy2', 'images/巴巴博一.png'],
+        ['enemy2', 'images/巴巴博_.png'],
         ['enemy3', 'images/比比拉布.png'],
         ['enemy4', 'images/咕咕嘎嘎.png'],
         ['enemy5', 'images/歪比巴布.png'],
@@ -470,9 +476,6 @@
       const loaded = await Promise.all(imageList.map(([name, src]) => loadImage(name, src)));
       loaded.forEach(item => {
         images[item.name] = item.img;
-        if (!item.ok) {
-          console.warn('图片加载失败:', item.name, item.src);
-        }
       });
 
       sounds.shoot = new Audio('audios/鸡叫.wav');
@@ -1022,7 +1025,6 @@
         player.bulletCooldown--;
       }
 
-      // 这里只允许手动射击，绝不自动开火
       if (shootingTouch && player.bulletCooldown <= 0) {
         spawnBullet();
         player.bulletCooldown = player.fireRate;
