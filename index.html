@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-  <title>飞机游戏-左右血条版</title>
+  <title>飞机游戏-修正版</title>
   <style>
     * {
       box-sizing: border-box;
@@ -24,6 +24,11 @@
       color: #fff;
     }
 
+    body {
+      position: fixed;
+      inset: 0;
+    }
+
     #app {
       position: fixed;
       inset: 0;
@@ -33,6 +38,7 @@
       background:
         radial-gradient(circle at top, rgba(59,130,246,0.12), transparent 40%),
         linear-gradient(180deg, #091120 0%, #050912 100%);
+      overflow: hidden;
     }
 
     #gameWrap {
@@ -51,13 +57,13 @@
 
     .top-info {
       position: fixed;
-      top: env(safe-area-inset-top, 0px);
+      top: calc(env(safe-area-inset-top, 0px) + 8px);
       left: 50%;
       transform: translateX(-50%);
-      width: min(94vw, 560px);
-      z-index: 10;
+      width: min(92vw, 560px);
+      z-index: 20;
       pointer-events: none;
-      padding: 10px 10px 0;
+      padding: 0 8px;
     }
 
     .info-row {
@@ -65,8 +71,7 @@
       gap: 8px;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 8px;
-      background: rgba(9,14,25,0.5);
+      background: rgba(9,14,25,0.55);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 12px;
       padding: 8px 10px;
@@ -81,65 +86,75 @@
       flex-wrap: wrap;
     }
 
-    /* 关键：左右两侧固定血条 */
-    .side-bar {
-      position: fixed;
-      top: 120px;
-      width: 52px;
-      height: 300px;
-      z-index: 15;
+    /* 强制固定到左右中间，不参与顶部布局 */
+    .side-hud {
+      position: fixed !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      width: 64px;
+      height: 320px;
+      z-index: 999;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
       gap: 10px;
       pointer-events: none;
     }
 
-    .left-bar {
-      left: max(8px, env(safe-area-inset-left, 0px));
+    .player-hud {
+      left: max(6px, env(safe-area-inset-left, 0px)) !important;
+      right: auto !important;
     }
 
-    .right-bar {
-      right: max(8px, env(safe-area-inset-right, 0px));
+    .boss-hud {
+      right: max(6px, env(safe-area-inset-right, 0px)) !important;
+      left: auto !important;
     }
 
     .bar-title {
-      font-size: 12px;
-      color: rgba(255,255,255,0.92);
-      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      font-size: 13px;
+      color: rgba(255,255,255,0.96);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.45);
       letter-spacing: 1px;
       writing-mode: vertical-rl;
       text-orientation: mixed;
     }
 
-    .vertical-bar-wrap {
+    .bar-outer {
       position: relative;
-      width: 20px;
-      height: 240px;
+      width: 22px;
+      height: 250px;
       border-radius: 999px;
       background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.14);
       overflow: hidden;
-      box-shadow: inset 0 0 10px rgba(0,0,0,0.25);
+      box-shadow: inset 0 0 12px rgba(0,0,0,0.3);
     }
 
-    .vertical-bar {
+    .bar-inner {
       position: absolute;
       left: 0;
       bottom: 0;
       width: 100%;
       height: 100%;
       border-radius: 999px;
-      transition: height 0.12s linear;
+      transition: height 0.1s linear;
     }
 
     .player-bar {
-      background: linear-gradient(180deg, #22c55e, #4ade80);
+      background: linear-gradient(180deg, #16a34a, #4ade80);
     }
 
     .boss-bar {
-      background: linear-gradient(180deg, #ef4444, #f97316);
+      background: linear-gradient(180deg, #dc2626, #fb923c);
+    }
+
+    .bar-text {
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      min-height: 16px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
     }
 
     .hide {
@@ -163,7 +178,7 @@
     .mobile-controls {
       position: fixed;
       inset: 0;
-      z-index: 20;
+      z-index: 30;
       pointer-events: none;
     }
 
@@ -174,6 +189,7 @@
       width: 150px;
       height: 150px;
       pointer-events: auto;
+      touch-action: none;
     }
 
     .stick-base {
@@ -192,7 +208,7 @@
       width: 50px;
       height: 50px;
       border-radius: 50%;
-      background: rgba(56,189,248,0.85);
+      background: rgba(56,189,248,0.9);
       box-shadow: 0 0 18px rgba(56,189,248,0.35);
     }
 
@@ -205,6 +221,7 @@
       gap: 14px;
       pointer-events: auto;
       align-items: center;
+      touch-action: none;
     }
 
     .mobile-btn {
@@ -218,6 +235,8 @@
       backdrop-filter: blur(6px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.28);
       outline: none;
+      pointer-events: auto;
+      touch-action: none;
     }
 
     .mobile-btn:active {
@@ -235,7 +254,7 @@
     .overlay {
       position: fixed;
       inset: 0;
-      z-index: 30;
+      z-index: 50;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -332,19 +351,21 @@
   </div>
 
   <!-- 左侧玩家血条 -->
-  <div class="side-bar left-bar" id="playerBarWrap">
+  <div class="side-hud player-hud" id="playerHud">
     <div class="bar-title">玩家</div>
-    <div class="vertical-bar-wrap">
-      <div class="vertical-bar player-bar" id="playerHpBar"></div>
+    <div class="bar-outer">
+      <div class="bar-inner player-bar" id="playerHpBar"></div>
     </div>
+    <div class="bar-text" id="playerHpText">100%</div>
   </div>
 
-  <!-- 右侧 Boss 血条 -->
-  <div class="side-bar right-bar hide" id="bossBarWrap">
+  <!-- 右侧Boss血条 -->
+  <div class="side-hud boss-hud hide" id="bossHud">
     <div class="bar-title">Boss</div>
-    <div class="vertical-bar-wrap">
-      <div class="vertical-bar boss-bar" id="bossHpBar"></div>
+    <div class="bar-outer">
+      <div class="bar-inner boss-bar" id="bossHpBar"></div>
     </div>
+    <div class="bar-text" id="bossHpText">100%</div>
   </div>
 
   <div class="tip">
@@ -366,8 +387,7 @@
   <div class="overlay" id="startScreen">
     <div class="panel">
       <h1>手机版飞机游戏</h1>
-      <p>左下摇杆移动，右侧按钮射击与加速。</p>
-      <p>血条已固定到左右两侧显示。</p>
+      <p>已修正：左右血条、降低摇杆速度、支持左手移动同时右手射击。</p>
       <button class="start-btn" id="startBtn">开始游戏</button>
     </div>
   </div>
@@ -398,8 +418,10 @@
     const spdText = document.getElementById('spdText');
 
     const playerHpBar = document.getElementById('playerHpBar');
-    const bossBarWrap = document.getElementById('bossBarWrap');
+    const playerHpText = document.getElementById('playerHpText');
+    const bossHud = document.getElementById('bossHud');
     const bossHpBar = document.getElementById('bossHpBar');
+    const bossHpText = document.getElementById('bossHpText');
 
     const startScreen = document.getElementById('startScreen');
     const startBtn = document.getElementById('startBtn');
@@ -435,6 +457,10 @@
     let touchDy = 0;
     let shootingTouch = false;
     let boostingTouch = false;
+
+    let movePointerId = null;
+    let shootPointerId = null;
+    let boostPointerId = null;
 
     const stickCenter = { x: 75, y: 75 };
     const stickRadius = 48;
@@ -551,8 +577,8 @@
         this.h = 62;
         this.x = canvas.width / 2 - this.w / 2;
         this.y = canvas.height - 160;
-        this.baseSpeed = 4.6;
-        this.boostSpeed = 7.8;
+        this.baseSpeed = 2.8;   // 原来太快，这里明显降低
+        this.boostSpeed = 4.4;  // 加速也降一点，避免过冲
         this.hpMax = 120;
         this.hp = this.hpMax;
         this.attack = 1;
@@ -633,7 +659,7 @@
         this.r = type === 'fast' ? 18 : 20;
         this.x = rand(this.r, canvas.width - this.r);
         this.y = -30;
-        this.speed = type === 'fast' ? rand(1.8, 2.6) : rand(1.1, 1.9);
+        this.speed = type === 'fast' ? rand(1.5, 2.2) : rand(1.0, 1.6);
         this.hpMax = type === 'fast' ? 2 + wave * 0.2 : 3 + wave * 0.35;
         this.hp = this.hpMax;
         this.dead = false;
@@ -799,36 +825,12 @@
     }
 
     const upgradePool = [
-      {
-        name: '火力强化',
-        desc: '攻击力 +1',
-        apply() { player.attack += 1; }
-      },
-      {
-        name: '推进升级',
-        desc: '基础移速 +0.5',
-        apply() { player.baseSpeed += 0.5; }
-      },
-      {
-        name: '射速提升',
-        desc: '射击间隔 -1（最低 5）',
-        apply() { player.fireRate = Math.max(5, player.fireRate - 1); }
-      },
-      {
-        name: '装甲修复',
-        desc: '回复 30 生命值',
-        apply() { player.hp = Math.min(player.hpMax, player.hp + 30); }
-      },
-      {
-        name: '多重弹幕',
-        desc: '子弹数量 +2（上限 5）',
-        apply() { player.multiShot = Math.min(5, player.multiShot + 2); }
-      },
-      {
-        name: '穿透升级',
-        desc: '子弹穿透 +1',
-        apply() { player.pierce += 1; }
-      }
+      { name: '火力强化', desc: '攻击力 +1', apply() { player.attack += 1; } },
+      { name: '推进升级', desc: '基础移速 +0.4', apply() { player.baseSpeed += 0.4; } },
+      { name: '射速提升', desc: '射击间隔 -1（最低 5）', apply() { player.fireRate = Math.max(5, player.fireRate - 1); } },
+      { name: '装甲修复', desc: '回复 30 生命值', apply() { player.hp = Math.min(player.hpMax, player.hp + 30); } },
+      { name: '多重弹幕', desc: '子弹数量 +2（上限 5）', apply() { player.multiShot = Math.min(5, player.multiShot + 2); } },
+      { name: '穿透升级', desc: '子弹穿透 +1', apply() { player.pierce += 1; } }
     ];
 
     function pickUpgrades(count = 3) {
@@ -879,11 +881,14 @@
       lastBossLaughTime = 0;
       shootingTouch = false;
       boostingTouch = false;
+      movePointerId = null;
+      shootPointerId = null;
+      boostPointerId = null;
       player.reset();
       gamePaused = false;
       gameOverScreen.classList.add('hide');
       upgradeScreen.classList.add('hide');
-      bossBarWrap.classList.add('hide');
+      bossHud.classList.add('hide');
       resetStick();
       initStars();
     }
@@ -904,7 +909,7 @@
       touchMoveActive = false;
     }
 
-    function updateStick(clientX, clientY) {
+    function updateStickByClient(clientX, clientY) {
       const rect = moveZone.getBoundingClientRect();
       const x = clientX - rect.left;
       const y = clientY - rect.top;
@@ -914,98 +919,88 @@
       const dist = Math.hypot(dx, dy);
 
       if (dist > stickRadius) {
-        dx = dx / dist * stickRadius;
-        dy = dy / dist * stickRadius;
+        dx = (dx / dist) * stickRadius;
+        dy = (dy / dist) * stickRadius;
       }
 
       stick.style.left = `${50 + dx}px`;
       stick.style.top = `${50 + dy}px`;
 
-      touchDx = dx / stickRadius;
-      touchDy = dy / stickRadius;
+      /* 再人为削弱一点摇杆输出，避免太灵敏 */
+      touchDx = (dx / stickRadius) * 0.72;
+      touchDy = (dy / stickRadius) * 0.72;
       touchMoveActive = true;
     }
 
-    moveZone.addEventListener('touchstart', e => {
+    moveZone.addEventListener('pointerdown', e => {
       e.preventDefault();
-      const t = e.touches[0];
-      updateStick(t.clientX, t.clientY);
-    }, { passive: false });
+      if (movePointerId !== null) return;
+      movePointerId = e.pointerId;
+      moveZone.setPointerCapture(e.pointerId);
+      updateStickByClient(e.clientX, e.clientY);
+    });
 
-    moveZone.addEventListener('touchmove', e => {
+    moveZone.addEventListener('pointermove', e => {
+      if (e.pointerId !== movePointerId) return;
       e.preventDefault();
-      const t = e.touches[0];
-      updateStick(t.clientX, t.clientY);
-    }, { passive: false });
+      updateStickByClient(e.clientX, e.clientY);
+    });
 
-    moveZone.addEventListener('touchend', e => {
-      e.preventDefault();
+    function endMovePointer(e) {
+      if (e.pointerId !== movePointerId) return;
+      movePointerId = null;
       resetStick();
-    }, { passive: false });
-
-    moveZone.addEventListener('touchcancel', e => {
-      e.preventDefault();
-      resetStick();
-    }, { passive: false });
-
-    function bindHoldButton(el, onDown, onUp) {
-      el.addEventListener('touchstart', e => {
-        e.preventDefault();
-        onDown();
-      }, { passive: false });
-
-      el.addEventListener('touchend', e => {
-        e.preventDefault();
-        onUp();
-      }, { passive: false });
-
-      el.addEventListener('touchcancel', e => {
-        e.preventDefault();
-        onUp();
-      }, { passive: false });
-
-      el.addEventListener('mousedown', e => {
-        e.preventDefault();
-        onDown();
-      });
-
-      el.addEventListener('mouseup', e => {
-        e.preventDefault();
-        onUp();
-      });
-
-      el.addEventListener('mouseleave', e => {
-        e.preventDefault();
-        onUp();
-      });
-
-      el.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        onDown();
-      });
-
-      el.addEventListener('pointerup', e => {
-        e.preventDefault();
-        onUp();
-      });
-
-      el.addEventListener('pointercancel', e => {
-        e.preventDefault();
-        onUp();
-      });
     }
 
-    bindHoldButton(
-      shootBtn,
-      () => { shootingTouch = true; },
-      () => { shootingTouch = false; }
-    );
+    moveZone.addEventListener('pointerup', endMovePointer);
+    moveZone.addEventListener('pointercancel', endMovePointer);
+    moveZone.addEventListener('pointerleave', () => {});
 
-    bindHoldButton(
-      boostBtn,
-      () => { boostingTouch = true; },
-      () => { boostingTouch = false; }
-    );
+    shootBtn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (shootPointerId === null) shootPointerId = e.pointerId;
+      shootingTouch = true;
+      shootBtn.setPointerCapture(e.pointerId);
+    });
+
+    shootBtn.addEventListener('pointerup', e => {
+      e.preventDefault();
+      if (e.pointerId === shootPointerId) {
+        shootPointerId = null;
+        shootingTouch = false;
+      }
+    });
+
+    shootBtn.addEventListener('pointercancel', e => {
+      e.preventDefault();
+      if (e.pointerId === shootPointerId) {
+        shootPointerId = null;
+        shootingTouch = false;
+      }
+    });
+
+    boostBtn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      if (boostPointerId === null) boostPointerId = e.pointerId;
+      boostingTouch = true;
+      boostBtn.setPointerCapture(e.pointerId);
+    });
+
+    boostBtn.addEventListener('pointerup', e => {
+      e.preventDefault();
+      if (e.pointerId === boostPointerId) {
+        boostPointerId = null;
+        boostingTouch = false;
+      }
+    });
+
+    boostBtn.addEventListener('pointercancel', e => {
+      e.preventDefault();
+      if (e.pointerId === boostPointerId) {
+        boostPointerId = null;
+        boostingTouch = false;
+      }
+    });
 
     function updatePlayer() {
       let dx = 0;
@@ -1018,7 +1013,7 @@
 
       if (dx !== 0 || dy !== 0) {
         const len = Math.hypot(dx, dy) || 1;
-        player.move(dx / len, dy / len);
+        player.move(dx / len * Math.min(1, Math.hypot(touchDx, touchDy)), dy / len * Math.min(1, Math.hypot(touchDx, touchDy)));
       }
 
       if (player.bulletCooldown > 0) {
@@ -1231,13 +1226,17 @@
       atkText.textContent = `攻击：${player.attack}`;
       spdText.textContent = `移速：${player.baseSpeed.toFixed(1)}`;
 
-      playerHpBar.style.height = `${Math.max(0, (player.hp / player.hpMax) * 100)}%`;
+      const php = Math.max(0, (player.hp / player.hpMax) * 100);
+      playerHpBar.style.height = `${php}%`;
+      playerHpText.textContent = `${Math.ceil(php)}%`;
 
       if (boss && !boss.dead) {
-        bossBarWrap.classList.remove('hide');
-        bossHpBar.style.height = `${Math.max(0, (boss.hp / boss.hpMax) * 100)}%`;
+        const bhp = Math.max(0, (boss.hp / boss.hpMax) * 100);
+        bossHud.classList.remove('hide');
+        bossHpBar.style.height = `${bhp}%`;
+        bossHpText.textContent = `${Math.ceil(bhp)}%`;
       } else {
-        bossBarWrap.classList.add('hide');
+        bossHud.classList.add('hide');
       }
     }
 
