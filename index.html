@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
-  <title>手机版 Canvas 飞机游戏</title>
+  <title>飞机游戏-手动射击版</title>
   <style>
     * {
       box-sizing: border-box;
@@ -45,12 +45,11 @@
     canvas {
       display: block;
       margin: 0 auto;
-      background:
-        linear-gradient(180deg, rgba(10,15,30,0.85), rgba(5,8,18,1));
+      background: linear-gradient(180deg, rgba(10,15,30,0.9), rgba(5,8,18,1));
       box-shadow: 0 0 40px rgba(0,0,0,0.35) inset;
     }
 
-    .hud {
+    .top-info {
       position: fixed;
       top: env(safe-area-inset-top, 0px);
       left: 50%;
@@ -61,7 +60,7 @@
       padding: 10px 10px 0;
     }
 
-    .hud-row {
+    .info-row {
       display: flex;
       gap: 8px;
       align-items: center;
@@ -72,33 +71,76 @@
       border-radius: 12px;
       padding: 8px 10px;
       backdrop-filter: blur(8px);
+      font-size: 13px;
     }
 
-    .hud-left, .hud-right {
+    .info-left, .info-right {
       display: flex;
       gap: 10px;
       align-items: center;
       flex-wrap: wrap;
-      font-size: 13px;
     }
 
-    .bar-wrap {
-      width: 100%;
-      height: 10px;
+    .side-bar {
+      position: fixed;
+      top: 90px;
+      width: 44px;
+      height: 260px;
+      z-index: 12;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      pointer-events: none;
+    }
+
+    .left-bar {
+      left: 8px;
+    }
+
+    .right-bar {
+      right: 8px;
+    }
+
+    .bar-title {
+      font-size: 12px;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+
+    .vertical-bar-wrap {
+      position: relative;
+      width: 18px;
+      height: 220px;
       border-radius: 999px;
       background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
       overflow: hidden;
-      margin-top: 6px;
     }
 
-    .bar {
-      height: 100%;
-      width: 50%;
-      transition: width 0.12s linear;
+    .vertical-bar {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 50%;
+      border-radius: 999px;
+      transition: height 0.12s linear;
     }
 
-    .hp-bar { background: linear-gradient(90deg, #22c55e, #4ade80); }
-    .boss-bar { background: linear-gradient(90deg, #ef4444, #f97316); }
+    .player-bar {
+      background: linear-gradient(180deg, #22c55e, #4ade80);
+    }
+
+    .boss-bar {
+      background: linear-gradient(180deg, #ef4444, #f97316);
+    }
+
+    .hide {
+      display: none !important;
+    }
 
     .tip {
       position: fixed;
@@ -158,6 +200,7 @@
       flex-direction: column;
       gap: 14px;
       pointer-events: auto;
+      align-items: center;
     }
 
     .mobile-btn {
@@ -165,24 +208,24 @@
       height: 92px;
       border-radius: 50%;
       border: 2px solid rgba(255,255,255,0.15);
-      background: rgba(14,165,233,0.75);
       color: #fff;
       font-size: 18px;
       font-weight: bold;
       backdrop-filter: blur(6px);
       box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+      outline: none;
     }
 
     .mobile-btn:active {
       transform: scale(0.96);
     }
 
-    .boost-btn {
-      background: rgba(249,115,22,0.82);
-    }
-
     .shoot-btn {
       background: rgba(14,165,233,0.82);
+    }
+
+    .boost-btn {
+      background: rgba(249,115,22,0.82);
     }
 
     .overlay {
@@ -207,8 +250,7 @@
       text-align: center;
     }
 
-    .panel h1,
-    .panel h2 {
+    .panel h1, .panel h2 {
       margin: 0 0 12px;
     }
 
@@ -256,10 +298,6 @@
       font-size: 13px;
     }
 
-    .hide {
-      display: none !important;
-    }
-
     @media (min-width: 900px) {
       #gameWrap {
         max-width: 560px;
@@ -275,32 +313,36 @@
     </div>
   </div>
 
-  <div class="hud">
-    <div class="hud-row">
-      <div class="hud-left">
+  <div class="top-info">
+    <div class="info-row">
+      <div class="info-left">
         <span id="scoreText">分数：0</span>
         <span id="levelText">等级：1</span>
         <span id="waveText">波次：1</span>
       </div>
-      <div class="hud-right">
+      <div class="info-right">
         <span id="atkText">攻击：1</span>
         <span id="spdText">移速：1.0</span>
       </div>
     </div>
+  </div>
 
-    <div class="hud-row" style="display:block;">
-      <div>生命值</div>
-      <div class="bar-wrap"><div class="bar hp-bar" id="hpBar"></div></div>
-    </div>
-
-    <div class="hud-row hide" id="bossHud" style="display:block;">
-      <div>Boss 血量</div>
-      <div class="bar-wrap"><div class="bar boss-bar" id="bossBar"></div></div>
+  <div class="side-bar left-bar">
+    <div class="bar-title">玩家</div>
+    <div class="vertical-bar-wrap">
+      <div class="vertical-bar player-bar" id="playerHpBar"></div>
     </div>
   </div>
 
-  <div class="tip" id="tip">
-    左下摇杆移动｜右下射击｜右侧加速
+  <div class="side-bar right-bar hide" id="bossBarWrap">
+    <div class="bar-title">Boss</div>
+    <div class="vertical-bar-wrap">
+      <div class="vertical-bar boss-bar" id="bossHpBar"></div>
+    </div>
+  </div>
+
+  <div class="tip">
+    左下摇杆移动｜右上射击｜右下加速
   </div>
 
   <div class="mobile-controls">
@@ -308,17 +350,18 @@
       <div class="stick-base"></div>
       <div class="stick" id="stick"></div>
     </div>
+
     <div class="action-zone">
-      <button class="mobile-btn shoot-btn" id="shootBtn">射击</button>
-      <button class="mobile-btn boost-btn" id="boostBtn">加速</button>
+      <button class="mobile-btn shoot-btn" id="shootBtn" type="button">射击</button>
+      <button class="mobile-btn boost-btn" id="boostBtn" type="button">加速</button>
     </div>
   </div>
 
   <div class="overlay" id="startScreen">
     <div class="panel">
       <h1>手机版飞机游戏</h1>
-      <p>点击开始后将解锁音频，并进入移动端操作模式。</p>
-      <p>操作：左下摇杆移动，右侧按钮射击与加速。</p>
+      <p>操作：左下摇杆移动，右上按钮射击，右下按钮加速。</p>
+      <p>本版已改为手动射击，Boss 固定使用奶茶贴图。</p>
       <button class="start-btn" id="startBtn">开始游戏</button>
     </div>
   </div>
@@ -347,9 +390,10 @@
     const waveText = document.getElementById('waveText');
     const atkText = document.getElementById('atkText');
     const spdText = document.getElementById('spdText');
-    const hpBar = document.getElementById('hpBar');
-    const bossHud = document.getElementById('bossHud');
-    const bossBar = document.getElementById('bossBar');
+
+    const playerHpBar = document.getElementById('playerHpBar');
+    const bossBarWrap = document.getElementById('bossBarWrap');
+    const bossHpBar = document.getElementById('bossHpBar');
 
     const startScreen = document.getElementById('startScreen');
     const startBtn = document.getElementById('startBtn');
@@ -362,8 +406,8 @@
 
     const moveZone = document.getElementById('moveZone');
     const stick = document.getElementById('stick');
-    const boostBtn = document.getElementById('boostBtn');
     const shootBtn = document.getElementById('shootBtn');
+    const boostBtn = document.getElementById('boostBtn');
 
     let gameStarted = false;
     let gamePaused = false;
@@ -372,6 +416,7 @@
     let score = 0;
     let wave = 1;
     let enemySpawnTimer = 0;
+
     let stars = [];
     let bullets = [];
     let enemies = [];
@@ -382,8 +427,8 @@
     let touchMoveActive = false;
     let touchDx = 0;
     let touchDy = 0;
-    let boostingTouch = false;
     let shootingTouch = false;
+    let boostingTouch = false;
 
     const stickCenter = { x: 75, y: 75 };
     const stickRadius = 48;
@@ -405,8 +450,8 @@
     function loadImage(name, src) {
       return new Promise(resolve => {
         const img = new Image();
-        img.onload = () => resolve({ name, img });
-        img.onerror = () => resolve({ name, img: null });
+        img.onload = () => resolve({ name, img, ok: true, src });
+        img.onerror = () => resolve({ name, img: null, ok: false, src });
         img.src = src;
       });
     }
@@ -415,24 +460,25 @@
       const imageList = [
         ['player', 'images/飞机.jpeg'],
         ['enemy1', 'images/奶茶.png'],
-        ['enemy2', 'images/巴巴博_.png'],
+        ['enemy2', 'images/巴巴博一.png'],
         ['enemy3', 'images/比比拉布.png'],
         ['enemy4', 'images/咕咕嘎嘎.png'],
         ['enemy5', 'images/歪比巴布.png'],
-        ['boss', 'images/奶茶.png']
+        ['bossMilkTea', 'images/奶茶.png']
       ];
 
       const loaded = await Promise.all(imageList.map(([name, src]) => loadImage(name, src)));
       loaded.forEach(item => {
         images[item.name] = item.img;
+        if (!item.ok) {
+          console.warn('图片加载失败:', item.name, item.src);
+        }
       });
 
       sounds.shoot = new Audio('audios/鸡叫.wav');
       sounds.bossAttack = new Audio('audios/奶龙大笑_剪辑.wav');
-
       sounds.shoot.preload = 'auto';
       sounds.bossAttack.preload = 'auto';
-
       sounds.shoot.volume = 0.55;
       sounds.bossAttack.volume = 0.7;
     }
@@ -514,7 +560,6 @@
         this.bulletCooldown = 0;
         this.multiShot = 1;
         this.pierce = 0;
-        this.size = 1;
       }
 
       move(dx, dy) {
@@ -561,10 +606,9 @@
       update() {
         this.x += this.vx;
         this.y += this.vy;
-        if (
-          this.x < -20 || this.x > canvas.width + 20 ||
-          this.y < -40 || this.y > canvas.height + 40
-        ) this.dead = true;
+        if (this.x < -20 || this.x > canvas.width + 20 || this.y < -40 || this.y > canvas.height + 40) {
+          this.dead = true;
+        }
       }
 
       draw() {
@@ -572,6 +616,7 @@
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
         ctx.fill();
+
         ctx.fillStyle = 'rgba(125,211,252,0.6)';
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.r + 3, 0, Math.PI * 2);
@@ -630,8 +675,8 @@
       constructor() {
         this.x = canvas.width / 2;
         this.y = 110;
-        this.r = 52;
-        this.hpMax = 140 + wave * 18;
+        this.r = 56;
+        this.hpMax = 180 + wave * 20;
         this.hp = this.hpMax;
         this.dead = false;
         this.dir = 1;
@@ -673,7 +718,7 @@
       }
 
       draw() {
-        const img = images.boss;
+        const img = images.bossMilkTea;
         if (img) {
           ctx.drawImage(img, this.x - this.r, this.y - this.r, this.r * 2, this.r * 2);
           return;
@@ -681,10 +726,17 @@
 
         ctx.save();
         ctx.translate(this.x, this.y);
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(-this.r, -this.r, this.r * 2, this.r * 2);
         ctx.fillStyle = '#ef4444';
         ctx.beginPath();
-        ctx.arc(0, 0, this.r, 0, Math.PI * 2);
+        ctx.arc(0, 0, this.r * 0.85, 0, Math.PI * 2);
         ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Boss图加载失败', 0, 4);
         ctx.restore();
       }
     }
@@ -701,9 +753,8 @@
       if (spread === 1) {
         bullets.push(new Bullet(cx, top, 0, -8.2, player.attack, player.pierce));
       } else {
-        const total = spread;
-        for (let i = 0; i < total; i++) {
-          const offset = (i - (total - 1) / 2) * 0.18;
+        for (let i = 0; i < spread; i++) {
+          const offset = (i - (spread - 1) / 2) * 0.18;
           bullets.push(new Bullet(cx, top, Math.sin(offset) * 3, -8.0, player.attack, player.pierce));
         }
       }
@@ -746,37 +797,31 @@
 
     const upgradePool = [
       {
-        key: 'atk',
         name: '火力强化',
         desc: '攻击力 +1',
         apply() { player.attack += 1; }
       },
       {
-        key: 'speed',
         name: '推进升级',
         desc: '基础移速 +0.5',
         apply() { player.baseSpeed += 0.5; }
       },
       {
-        key: 'firerate',
         name: '射速提升',
         desc: '射击间隔 -1（最低 5）',
         apply() { player.fireRate = Math.max(5, player.fireRate - 1); }
       },
       {
-        key: 'heal',
         name: '装甲修复',
         desc: '回复 30 生命值',
         apply() { player.hp = Math.min(player.hpMax, player.hp + 30); }
       },
       {
-        key: 'multishot',
         name: '多重弹幕',
         desc: '子弹数量 +2（上限 5）',
         apply() { player.multiShot = Math.min(5, player.multiShot + 2); }
       },
       {
-        key: 'pierce',
         name: '穿透升级',
         desc: '子弹穿透 +1',
         apply() { player.pierce += 1; }
@@ -835,7 +880,7 @@
       gamePaused = false;
       gameOverScreen.classList.add('hide');
       upgradeScreen.classList.add('hide');
-      bossHud.classList.add('hide');
+      bossBarWrap.classList.add('hide');
       resetStick();
       initStars();
     }
@@ -844,9 +889,7 @@
       gameStarted = false;
       cancelAnimationFrame(animationId);
       gameOverTitle.textContent = win ? '胜利！' : '游戏结束';
-      gameOverDesc.textContent = win
-        ? `你成功击败了 Boss，最终分数：${score}`
-        : `本次分数：${score}`;
+      gameOverDesc.textContent = win ? `你成功击败了 Boss，最终分数：${score}` : `本次分数：${score}`;
       gameOverScreen.classList.remove('hide');
     }
 
@@ -902,35 +945,64 @@
       resetStick();
     }, { passive: false });
 
-    boostBtn.addEventListener('touchstart', e => {
-      e.preventDefault();
-      boostingTouch = true;
-    }, { passive: false });
+    function bindHoldButton(el, onDown, onUp) {
+      el.addEventListener('touchstart', e => {
+        e.preventDefault();
+        onDown();
+      }, { passive: false });
 
-    boostBtn.addEventListener('touchend', e => {
-      e.preventDefault();
-      boostingTouch = false;
-    }, { passive: false });
+      el.addEventListener('touchend', e => {
+        e.preventDefault();
+        onUp();
+      }, { passive: false });
 
-    boostBtn.addEventListener('touchcancel', e => {
-      e.preventDefault();
-      boostingTouch = false;
-    }, { passive: false });
+      el.addEventListener('touchcancel', e => {
+        e.preventDefault();
+        onUp();
+      }, { passive: false });
 
-    shootBtn.addEventListener('touchstart', e => {
-      e.preventDefault();
-      shootingTouch = true;
-    }, { passive: false });
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        onDown();
+      });
 
-    shootBtn.addEventListener('touchend', e => {
-      e.preventDefault();
-      shootingTouch = false;
-    }, { passive: false });
+      el.addEventListener('mouseup', e => {
+        e.preventDefault();
+        onUp();
+      });
 
-    shootBtn.addEventListener('touchcancel', e => {
-      e.preventDefault();
-      shootingTouch = false;
-    }, { passive: false });
+      el.addEventListener('mouseleave', e => {
+        e.preventDefault();
+        onUp();
+      });
+
+      el.addEventListener('pointerdown', e => {
+        e.preventDefault();
+        onDown();
+      });
+
+      el.addEventListener('pointerup', e => {
+        e.preventDefault();
+        onUp();
+      });
+
+      el.addEventListener('pointercancel', e => {
+        e.preventDefault();
+        onUp();
+      });
+    }
+
+    bindHoldButton(
+      shootBtn,
+      () => { shootingTouch = true; },
+      () => { shootingTouch = false; }
+    );
+
+    bindHoldButton(
+      boostBtn,
+      () => { boostingTouch = true; },
+      () => { boostingTouch = false; }
+    );
 
     function updatePlayer() {
       let dx = 0;
@@ -946,8 +1018,11 @@
         player.move(dx / len, dy / len);
       }
 
-      if (player.bulletCooldown > 0) player.bulletCooldown--;
+      if (player.bulletCooldown > 0) {
+        player.bulletCooldown--;
+      }
 
+      // 这里只允许手动射击，绝不自动开火
       if (shootingTouch && player.bulletCooldown <= 0) {
         spawnBullet();
         player.bulletCooldown = player.fireRate;
@@ -982,6 +1057,7 @@
           if (circleHit(b.x, b.y, b.r, e.x, e.y, e.r)) {
             e.hp -= b.damage;
             addParticles(b.x, b.y, '#93c5fd', 5);
+
             if (b.pierce > 0) {
               b.pierce--;
             } else {
@@ -1082,10 +1158,7 @@
           }
         }
 
-        if (
-          b.x < -20 || b.x > canvas.width + 20 ||
-          b.y < -20 || b.y > canvas.height + 20
-        ) {
+        if (b.x < -20 || b.x > canvas.width + 20 || b.y < -20 || b.y > canvas.height + 20) {
           b.dead = true;
         }
       }
@@ -1155,13 +1228,14 @@
       waveText.textContent = `波次：${wave}`;
       atkText.textContent = `攻击：${player.attack}`;
       spdText.textContent = `移速：${player.baseSpeed.toFixed(1)}`;
-      hpBar.style.width = `${(player.hp / player.hpMax) * 100}%`;
+
+      playerHpBar.style.height = `${Math.max(0, (player.hp / player.hpMax) * 100)}%`;
 
       if (boss && !boss.dead) {
-        bossHud.classList.remove('hide');
-        bossBar.style.width = `${(boss.hp / boss.hpMax) * 100}%`;
+        bossBarWrap.classList.remove('hide');
+        bossHpBar.style.height = `${Math.max(0, (boss.hp / boss.hpMax) * 100)}%`;
       } else {
-        bossHud.classList.add('hide');
+        bossBarWrap.classList.add('hide');
       }
     }
 
@@ -1238,8 +1312,9 @@
 
     document.addEventListener('visibilitychange', () => {
       if (!gameStarted) return;
-      gamePaused = document.hidden || !upgradeScreen.classList.contains('hide') ? true : gamePaused;
-      if (!document.hidden && upgradeScreen.classList.contains('hide') && gameStarted) {
+      if (document.hidden) {
+        gamePaused = true;
+      } else if (upgradeScreen.classList.contains('hide')) {
         gamePaused = false;
       }
     });
